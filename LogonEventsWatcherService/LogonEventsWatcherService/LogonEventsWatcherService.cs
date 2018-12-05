@@ -16,19 +16,13 @@ namespace LogonEventsWatcherService
 {
     public partial class LogonEventsWatcherService : ServiceBase
     {
-        private Timer timer;
-        private int n = 0;
-        private String logFile;
-        private ManagementEventWatcher watcher;
-        //private EventLogHandler handler;
-
-
+        private Watcher watcher = new Watcher();
+        private Updater updater = new Updater();
+   
         public LogonEventsWatcherService()
         {
             InitializeComponent();
-            timer = new Timer(3000D);
-            timer.AutoReset = true;
-            timer.Elapsed += new ElapsedEventHandler(timer_elasped);
+            Logger.Init();
         }
 
 
@@ -36,75 +30,28 @@ namespace LogonEventsWatcherService
         {
             try
             {
-                timer.Start();
-
-                ConnectionOptions connectionOptions = new ConnectionOptions();
-                connectionOptions.Username = "pepel@testdomain.com";
-                connectionOptions.Password = "Qwerty123";
-                // Connect to the remote machine's WMI repository
-                ManagementScope ms = new ManagementScope(@"\\testserver\root\cimv2");
-                // connect it
-                ms.Connect();
-
-                watcher = new ManagementEventWatcher(ms, new EventQuery("SELECT * FROM __InstanceCreationEvent WITHIN 1 WHERE TargetInstance isa \"Win32_NTLogEvent\" AND (TargetInstance.EventCode = '4624' OR TargetInstance.EventCode = '4634') "));
-                watcher.EventArrived += new EventArrivedEventHandler(eventArrived);
                 watcher.Start();
-
+                updater.Start();
             }
             catch (Exception ex)
             {
-                //log anywhere
-                writeLog(ex.Message);
+                Logger.Log.Error(ex.Message);
             }
         }
 
-        private void eventArrived(object sender, EventArrivedEventArgs e)
-        {
-            PropertyData pd;
-            if ((pd = e.NewEvent.Properties["TargetInstance"]) != null)
-            {
-                ManagementBaseObject mbo = pd.Value as ManagementBaseObject;
-                if (mbo.Properties["Message"].Value != null)
-                {
-                    writeLog(mbo.Properties["Message"].Value.ToString());
-                }
-            }
-        }
-
-
-        private void timer_elasped(object sender, ElapsedEventArgs e)
-        {
-            try
-            {
-                writeLog(n.ToString());
-                n++;
-            }
-            catch (Exception ex)
-            {
-                writeLog(ex.Message);
-            }
-        }
+    
             
         protected override void OnStop()
         {
-            if (timer != null)
+            try
             {
-                timer.Stop();
+                watcher.Stop();
+                updater.Stop();
             }
-        }
-
-       
-        private void writeLog(String message)
-        {
-            if (String.IsNullOrEmpty(logFile))
+            catch (Exception ex)
             {
-                string codeBase = Assembly.GetExecutingAssembly().CodeBase;
-                UriBuilder uri = new UriBuilder(codeBase);
-                string path = Uri.UnescapeDataString(uri.Path);
-                logFile = Path.GetDirectoryName(path) + "\\log.txt";
-           }
-
-            File.AppendAllText(logFile, DateTime.Now.ToShortTimeString() + ": " + message +"\n");
+                Logger.Log.Error(ex.Message);
+            }
         }
     }
 }
