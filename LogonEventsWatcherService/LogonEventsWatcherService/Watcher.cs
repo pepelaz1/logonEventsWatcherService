@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Management;
 using System.Text;
@@ -32,7 +33,11 @@ namespace LogonEventsWatcherService
 
         public void Stop()
         {
+            if (managementEventWatcher != null)
+                managementEventWatcher.Stop();
+           
             Logger.Log.Info("Watcher stopped");
+            GC.Collect();
         }
 
         private void eventArrived(object sender, EventArrivedEventArgs e)
@@ -41,11 +46,48 @@ namespace LogonEventsWatcherService
             if ((pd = e.NewEvent.Properties["TargetInstance"]) != null)
             {
                 ManagementBaseObject mbo = pd.Value as ManagementBaseObject;
-                if (mbo.Properties["Message"].Value != null)
-                {
-                    //writeLog(mbo.Properties["Message"].Value.ToString());
-                }
+                processManagementObject(mbo);
             }
+        }
+
+        private void processManagementObject(ManagementBaseObject mbo)
+        {
+            //var eventCode = mbo.Properties["EventCode"];
+            //if (eventCode != null)
+            //{
+            //    Logger.Log.Info("Event: " + eventCode.Value.ToString());
+            //}
+            try
+            {
+                String logString = "Event";
+                var eventCodeProp = mbo.Properties["EventCode"];
+                if (eventCodeProp != null)
+                   logString += "code: " + eventCodeProp.Value.ToString() + ": ";
+
+                var timeWrittenProp = mbo.Properties["TimeWritten"];
+                if (timeWrittenProp.Value != null)
+                    logString += ", time: " + ManagementDateTimeConverter.ToDateTime(timeWrittenProp.Value.ToString());
+
+
+                Logger.Log.Info(logString);
+                //foreach (var property in mbo.Properties)
+                //{
+                //    if (property.Name != "Message")
+                //    {
+                //        Logger.Log.Info(property.Name + ": " 
+                //            + (property.Value != null ? property.Value.ToString() : ""));
+                //        //if (mbo.Properties["Message"].Value != null)
+                //        //{
+                //        //    //writeLog(mbo.Properties["Message"].Value.ToString());
+                //        //}
+                //    }
+                //}
+            }
+            catch(Exception ex)
+            {
+                Logger.Log.Error(Utils.FormatStackTrace(new StackTrace()) + ": " + ex.Message); 
+            }            
+
         }
     }
 }
