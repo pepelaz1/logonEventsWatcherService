@@ -18,6 +18,7 @@ namespace LogonEventsWatcherService
     {
         private Watcher watcher = new Watcher();
         private Updater updater = new Updater();
+        private Sender sender = new Sender();
    
         public LogonEventsWatcherService()
         {
@@ -32,6 +33,7 @@ namespace LogonEventsWatcherService
             {
                 watcher.Start();
                 updater.Start();
+                sender.Start();
             }
             catch (Exception ex)
             {
@@ -47,6 +49,7 @@ namespace LogonEventsWatcherService
             {
                 watcher.Stop();
                 updater.Stop();
+                sender.Stop();
             }
             catch (Exception ex)
             {

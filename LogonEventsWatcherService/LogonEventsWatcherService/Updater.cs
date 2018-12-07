@@ -20,12 +20,12 @@ namespace LogonEventsWatcherService
 
         public void Start()
         {
-
+            Logger.Log.Info("Updater started");
         }
 
         public void Stop()
         {
-
+            Logger.Log.Info("Updater stopped");
         }
 
         private void timer_elasped(object sender, ElapsedEventArgs e)

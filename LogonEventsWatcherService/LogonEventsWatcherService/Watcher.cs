@@ -1,4 +1,6 @@
-﻿using System;
+﻿using LogonEventsWatcherService.Models;
+using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -10,21 +12,17 @@ namespace LogonEventsWatcherService
 {
     class Watcher
     {
-        private const String managementConnectionString = @"\\127.0.0.1\root\cimv2";
-        private const String managementQuery = "SELECT * FROM __InstanceCreationEvent WITHIN 1 WHERE TargetInstance isa \"Win32_NTLogEvent\" AND (TargetInstance.EventCode = '4624' OR TargetInstance.EventCode = '4634') ";
         private ManagementEventWatcher managementEventWatcher;
-
+   
         public void Start()
         {
             //ConnectionOptions connectionOptions = new ConnectionOptions();
             //connectionOptions.Username = "pepel@testdomain.com";
            // connectionOptions.Password = "Qwerty123";
-            // Connect to the remote machine's WMI repository
-           // ManagementScope managementScope = new ManagementScope(@"\\testserver\root\cimv2");
-            ManagementScope managementScope = new ManagementScope(managementConnectionString);
+            ManagementScope managementScope = new ManagementScope(Constants.ManagementConnectionString);
             managementScope.Connect();
 
-            managementEventWatcher = new ManagementEventWatcher(managementScope, new EventQuery(managementQuery));
+            managementEventWatcher = new ManagementEventWatcher(managementScope, new EventQuery(Constants.ManagementQuery));
             managementEventWatcher.EventArrived += new EventArrivedEventHandler(eventArrived);
             managementEventWatcher.Start();
 
@@ -52,42 +50,65 @@ namespace LogonEventsWatcherService
 
         private void processManagementObject(ManagementBaseObject mbo)
         {
-            //var eventCode = mbo.Properties["EventCode"];
-            //if (eventCode != null)
-            //{
-            //    Logger.Log.Info("Event: " + eventCode.Value.ToString());
-            //}
             try
             {
-                String logString = "Event";
+                EventData eventData = new EventData();
                 var eventCodeProp = mbo.Properties["EventCode"];
                 if (eventCodeProp != null)
-                   logString += "code: " + eventCodeProp.Value.ToString() + ": ";
+                    eventData.EventCode =  int.Parse(eventCodeProp.Value.ToString());
+             
+                var timeGeneratedProp = mbo.Properties["TimeGenerated"];
+                if (timeGeneratedProp.Value != null)
+                    eventData.TimeGenerated = ManagementDateTimeConverter.ToDateTime(timeGeneratedProp.Value.ToString());
+             
+                var messageProp = mbo.Properties["Message"];
+                if (messageProp != null)
+                    parseMessage(messageProp.Value.ToString(), eventData);
 
-                var timeWrittenProp = mbo.Properties["TimeWritten"];
-                if (timeWrittenProp.Value != null)
-                    logString += ", time: " + ManagementDateTimeConverter.ToDateTime(timeWrittenProp.Value.ToString());
-
-
-                Logger.Log.Info(logString);
-                //foreach (var property in mbo.Properties)
-                //{
-                //    if (property.Name != "Message")
-                //    {
-                //        Logger.Log.Info(property.Name + ": " 
-                //            + (property.Value != null ? property.Value.ToString() : ""));
-                //        //if (mbo.Properties["Message"].Value != null)
-                //        //{
-                //        //    //writeLog(mbo.Properties["Message"].Value.ToString());
-                //        //}
-                //    }
-                //}
+                if (eventData.AccountName != Constants.SystemRU && eventData.AccountName != Constants.SystemEN)
+                {
+                     String logString = String.Format("Enqueue event code: {0}, username: {1}, domain: {2}, time: {3}",
+                        eventData.EventCode, eventData.AccountName, eventData.DomainName, eventData.TimeGenerated.ToString());
+                    Logger.Log.Info(logString);
+                    Queue.Enqueue(eventData);
+                }
             }
             catch(Exception ex)
             {
                 Logger.Log.Error(Utils.FormatStackTrace(new StackTrace()) + ": " + ex.Message); 
-            }            
+            }           
+       }
 
+        private void parseMessage(String message, EventData eventData)
+        {
+            String[] parts = message.Split("\r\t\n".ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
+
+            if (eventData.EventCode == Constants.LogonEventCode)
+            {
+                for (int i = 0; i < parts.Length; i++)
+                {
+                    if (parts[i] == Constants.NewLogonEN || parts[i] == Constants.NewLogonRU)
+                    {
+                        eventData.AccountName = parts[i + 4];
+                        eventData.DomainName = parts[i + 6];
+                        break;
+                    }
+                }
+            }
+            else if (eventData.EventCode == Constants.LogoffEventCode)
+            {
+                for (int i = 0; i < parts.Length; i++)
+                {
+                    if (parts[i] == Constants.SubjectEN || parts[i] == Constants.SubjectRU)
+                    {
+                        eventData.AccountName = parts[i + 4];
+                        eventData.DomainName = parts[i + 6];
+                        break;
+                    }
+                }
+            }
         }
+        
+
     }
 }
