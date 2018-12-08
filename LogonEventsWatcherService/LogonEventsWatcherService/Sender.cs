@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -76,44 +77,52 @@ namespace LogonEventsWatcherService
             //        "username": ..... // AD username
             //    }
             //}
-            Int32 timestamp = (Int32)(eventData.TimeGenerated.Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
-            var requestData = new RequestData()
+
+            try
             {
-                id = Constants.RequestId,
-                type = eventData.EventCode == Constants.LogonEventCode ? 
-                    Constants.AdUserLogin : Constants.AdUserLogout,
-                timestamp = timestamp,
-                publisher =  Constants.Publisher,
-                payload = new Payload()
+                Int32 timestamp = (Int32)(eventData.TimeGenerated.Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
+                var requestData = new RequestData()
                 {
-                    mac = "",
-                    extension = "",
-                    pc = "",
-                    domain = eventData.DomainName,
-                    username = eventData.AccountName
+                    id = Constants.RequestId,
+                    type = eventData.EventCode == Constants.LogonEventCode ?
+                        Constants.AdUserLogin : Constants.AdUserLogout,
+                    timestamp = timestamp,
+                    publisher = Constants.Publisher,
+                    payload = new Payload()
+                    {
+                        mac = "",
+                        extension = "",
+                        pc = "",
+                        domain = eventData.DomainName,
+                        username = eventData.AccountName
+                    }
+                };
+
+                string json = JsonConvert.SerializeObject(requestData);
+
+                var request = WebRequest.Create(Constants.TargetUrl);
+                request.ContentType = "application/json";
+                request.Method = "POST";
+
+                using (var streamWriter = new StreamWriter(request.GetRequestStream()))
+                {
+                    streamWriter.Write(json);
+                    streamWriter.Flush();
+                    streamWriter.Close();
                 }
-            };
 
-            string json = JsonConvert.SerializeObject(requestData);
+                Logger.Log.Info("Perform http request: ");
 
-            var request = WebRequest.Create(Constants.TargetUrl);
-            request.ContentType = "application/json";
-            request.Method = "POST";
-
-            using (var streamWriter = new StreamWriter(request.GetRequestStream()))
-            {
-                streamWriter.Write(json);
-                streamWriter.Flush();
-                streamWriter.Close();
+                var response = request.GetResponse();
+                using (var streamReader = new StreamReader(response.GetResponseStream()))
+                {
+                    var result = streamReader.ReadToEnd();
+                    Logger.Log.Info("Respose: " + result);
+                }
             }
-
-            Logger.Log.Info("Perform http request: ");
-
-            var response = request.GetResponse();
-            using (var streamReader = new StreamReader(response.GetResponseStream()))
+            catch(Exception ex)
             {
-                var result = streamReader.ReadToEnd();
-                Logger.Log.Info("Respose: " + result);
+                Logger.Log.Error(Utils.FormatStackTrace(new StackTrace()) + ": " + ex.Message);
             }
         }
     }
