@@ -80,6 +80,8 @@ namespace LogonEventsWatcherService
 
             try
             {
+                ADData adData = Cache.Dict[eventData.AccountName];
+
                 Int32 timestamp = (Int32)(eventData.TimeGenerated.Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
                 var requestData = new RequestData()
                 {
@@ -90,8 +92,8 @@ namespace LogonEventsWatcherService
                     publisher = Constants.Publisher,
                     payload = new Payload()
                     {
-                        mac = "",
-                        extension = "",
+                        mac = adData.Mac,
+                        extension = adData.Extension,
                         pc = "",
                         domain = eventData.DomainName,
                         username = eventData.AccountName

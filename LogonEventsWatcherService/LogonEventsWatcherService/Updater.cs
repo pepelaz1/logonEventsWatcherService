@@ -1,4 +1,5 @@
-﻿using System;
+﻿using LogonEventsWatcherService.Models;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.DirectoryServices;
@@ -12,7 +13,7 @@ namespace LogonEventsWatcherService
     class Updater
     {
         private Timer timer;
-
+    
         public Updater()
         {
             timer = new Timer(3000D);
@@ -52,12 +53,29 @@ namespace LogonEventsWatcherService
 
                 searchResults = directorySearcher.FindAll();
 
+                String samAccountName = "";
                 foreach (SearchResult searchResult in searchResults)
                 {
                     var userEntry = searchResult.GetDirectoryEntry();
                     var accountNameProp = userEntry.Properties["SAMAccountName"];
                     if (accountNameProp != null)
                          Logger.Log.Info("Found user: " + accountNameProp.Value);
+                }
+
+                if (!String.IsNullOrEmpty(samAccountName))
+                {
+                    ADData adData = null;
+                    if (Cache.Dict.ContainsKey(samAccountName))
+                    {
+                        adData = Cache.Dict[samAccountName];
+                    }
+                    else
+                    {
+                        adData = new ADData();
+                        Cache.Dict[samAccountName] = adData;
+                    }
+
+                    adData.SamAccountName = samAccountName;
                 }
             }
             catch (Exception ex)

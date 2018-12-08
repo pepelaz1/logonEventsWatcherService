@@ -51,8 +51,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Cache.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="Logger.cs" />
+    <Compile Include="Models\ADData.cs" />
     <Compile Include="Models\EventData.cs" />
     <Compile Include="Models\Payload.cs" />
     <Compile Include="Models\RequestData.cs" />
