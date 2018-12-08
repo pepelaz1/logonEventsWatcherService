@@ -22,5 +22,12 @@ namespace LogonEventsWatcherService
 
         public const String SubjectEN = "Subject:";
         public const String SubjectRU = "Субъект:";
+
+        public const String RequestId = "8400b42a-0715-4f34-8330-19cc754c804b";
+        public const String AdUserLogin = "ad.user.login";
+        public const String AdUserLogout = "ad.user.logout";
+        public const String Publisher = "ad";
+
+        public const String TargetUrl = "http://www.google.com";
     }
 }

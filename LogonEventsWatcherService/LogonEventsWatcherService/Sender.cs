@@ -1,8 +1,11 @@
 ﻿using LogonEventsWatcherService.Models;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -53,13 +56,65 @@ namespace LogonEventsWatcherService
 
                 if (backgroundWorker.CancellationPending)
                     break;
+
             }
             resetEvent.Set();
         }
 
         private void Send(EventData eventData)
         {
+            //{
+            //    "id": "8400b42a-0715-4f34-8330-19cc754c804b", // uuid
+            //    "type": "ad.user.login", // "type": "ad.user.logout",
+            //    "timestamp": 1543939345.173888, // timestamp
+            //    "publisher": "ad", // name of service
+            //    "payload": {
+            //        "mac": ...., // mac address stored in AD computer object
+            //        "extension": ...., // extension stored in AD user object
+            //        "pc": ...., // pc where event ocurred
+            //        "domain": ...., // AD domain
+            //        "username": ..... // AD username
+            //    }
+            //}
+            Int32 timestamp = (Int32)(eventData.TimeGenerated.Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
+            var requestData = new RequestData()
+            {
+                id = Constants.RequestId,
+                type = eventData.EventCode == Constants.LogonEventCode ? 
+                    Constants.AdUserLogin : Constants.AdUserLogout,
+                timestamp = timestamp,
+                publisher =  Constants.Publisher,
+                payload = new Payload()
+                {
+                    mac = "",
+                    extension = "",
+                    pc = "",
+                    domain = eventData.DomainName,
+                    username = eventData.AccountName
+                }
+            };
 
+            string json = JsonConvert.SerializeObject(requestData);
+
+            var request = WebRequest.Create(Constants.TargetUrl);
+            request.ContentType = "application/json";
+            request.Method = "POST";
+
+            using (var streamWriter = new StreamWriter(request.GetRequestStream()))
+            {
+                streamWriter.Write(json);
+                streamWriter.Flush();
+                streamWriter.Close();
+            }
+
+            Logger.Log.Info("Perform http request: ");
+
+            var response = request.GetResponse();
+            using (var streamReader = new StreamReader(response.GetResponseStream()))
+            {
+                var result = streamReader.ReadToEnd();
+                Logger.Log.Info("Respose: " + result);
+            }
         }
     }
 }
