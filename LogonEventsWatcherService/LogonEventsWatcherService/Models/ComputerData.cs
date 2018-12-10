@@ -6,16 +6,11 @@ using System.Threading.Tasks;
 
 namespace LogonEventsWatcherService.Models
 {
-    public class EventData
+    [Serializable]
+    public class ComputerData
     {
-        public String AccountName { get; set; }
-
         public String ComputerName { get; set; }
 
-        public String DomainName { get; set; }
-        
-        public int EventCode { get; set; }
-
-        public DateTime TimeGenerated { get; set; }
+        public String Mac { get; set; }
     }
 }

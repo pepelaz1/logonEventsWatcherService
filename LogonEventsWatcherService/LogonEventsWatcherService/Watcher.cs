@@ -44,11 +44,11 @@ namespace LogonEventsWatcherService
             if ((pd = e.NewEvent.Properties["TargetInstance"]) != null)
             {
                 ManagementBaseObject mbo = pd.Value as ManagementBaseObject;
-                processManagementObject(mbo);
+                ProcessManagementObject(mbo);
             }
         }
 
-        private void processManagementObject(ManagementBaseObject mbo)
+        private void ProcessManagementObject(ManagementBaseObject mbo)
         {
             try
             {
@@ -60,15 +60,20 @@ namespace LogonEventsWatcherService
                 var timeGeneratedProp = mbo.Properties["TimeGenerated"];
                 if (timeGeneratedProp.Value != null)
                     eventData.TimeGenerated = ManagementDateTimeConverter.ToDateTime(timeGeneratedProp.Value.ToString());
-             
-                var messageProp = mbo.Properties["Message"];
+
+                var computerProp = mbo.Properties["ComputerName"];
+                if (computerProp != null)
+                    eventData.ComputerName = computerProp.Value.ToString();
+
+               var messageProp = mbo.Properties["Message"];
                 if (messageProp != null)
                     parseMessage(messageProp.Value.ToString(), eventData);
 
+
                 if (eventData.AccountName != Constants.SystemRU && eventData.AccountName != Constants.SystemEN)
                 {
-                     String logString = String.Format("Enqueue event code: {0}, username: {1}, domain: {2}, time: {3}",
-                        eventData.EventCode, eventData.AccountName, eventData.DomainName, eventData.TimeGenerated.ToString());
+                     String logString = String.Format("Enqueue event code: {0}, username: {1}, computer: {2}, domain: {3}, time: {4}",
+                        eventData.EventCode, eventData.AccountName, eventData.ComputerName, eventData.DomainName, eventData.TimeGenerated.ToString());
                     Logger.Log.Info(logString);
                     Queue.Enqueue(eventData);
                 }

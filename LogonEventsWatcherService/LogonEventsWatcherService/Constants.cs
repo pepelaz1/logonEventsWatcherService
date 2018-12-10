@@ -28,8 +28,6 @@ namespace LogonEventsWatcherService
         public const String AdUserLogout = "ad.user.logout";
         public const String Publisher = "ad";
 
-        public const String TargetUrl = "http://www.google.com";
-
-        public const String LdapPath = "LDAP://TESTDOMAIN";
+        public const String DataFile = "LogonEventsWatcherService.xml";
     }
 }

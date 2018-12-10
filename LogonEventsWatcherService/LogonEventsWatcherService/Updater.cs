@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.DirectoryServices;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -14,23 +15,28 @@ namespace LogonEventsWatcherService
     {
         private Timer timer;
     
-        public Updater()
-        {
-            timer = new Timer(3000D);
+ 
+        public void Start()
+        {           
+            //Cache.Deserialize();
+            QueryLdap();
+
+            timer = new Timer(Settings.Default.LdapQueryInterval * 1000);
             timer.AutoReset = true;
             timer.Elapsed += new ElapsedEventHandler(timer_elasped);
-        }
-
-        public void Start()
-        {
-            Logger.Log.Info("Updater started");
             timer.Start();
+
+            Logger.Log.Info("Updater started, inverval (sec): " + Settings.Default.LdapQueryInterval.ToString());
         }
 
         public void Stop()
         {
-            Logger.Log.Info("Updater stopped");
             timer.Stop();
+            timer = null;
+
+            //Cache.Serialize();
+
+            Logger.Log.Info("Updater stopped");
         }
 
         private void timer_elasped(object sender, ElapsedEventArgs e)
@@ -41,41 +47,57 @@ namespace LogonEventsWatcherService
         private void QueryLdap()
         {
             Logger.Log.Info("Updater perform ldap query");
+
+            QueryUserData();
+
+            QueryComputerData();           
+        }
+
+        private void QueryUserData()
+        {
             SearchResultCollection searchResults = null;
-          
             try
-            {             
-         
-                DirectoryEntry directoryEntry = new DirectoryEntry(Constants.LdapPath);
+            {
+                DirectoryEntry directoryEntry = new DirectoryEntry(Settings.Default.LdapPath);
 
                 DirectorySearcher directorySearcher = new DirectorySearcher(directoryEntry);
                 directorySearcher.Filter = "(&(objectClass=user))";
 
                 searchResults = directorySearcher.FindAll();
 
-                String samAccountName = "";
+                String accountName = "";
+                String extension = "";
+
                 foreach (SearchResult searchResult in searchResults)
                 {
                     var userEntry = searchResult.GetDirectoryEntry();
-                    var accountNameProp = userEntry.Properties["SAMAccountName"];
+
+                    var accountNameProp = userEntry.Properties["sAMAccountName"];
                     if (accountNameProp != null)
-                         Logger.Log.Info("Found user: " + accountNameProp.Value);
-                }
+                        accountName = accountNameProp.Value.ToString();
 
-                if (!String.IsNullOrEmpty(samAccountName))
-                {
-                    ADData adData = null;
-                    if (Cache.Dict.ContainsKey(samAccountName))
-                    {
-                        adData = Cache.Dict[samAccountName];
-                    }
-                    else
-                    {
-                        adData = new ADData();
-                        Cache.Dict[samAccountName] = adData;
-                    }
+                    var extensionProp = userEntry.Properties["ipPhone"];
+                    if (extensionProp != null)
+                        extension = extensionProp.Value == null ? "" : extensionProp.Value.ToString();
 
-                    adData.SamAccountName = samAccountName;
+                    Logger.Log.Info("Updater. Found user: " + accountName + ", extension: " + extension);
+
+                    if (!String.IsNullOrEmpty(accountName))
+                    {
+                        UserData userData = null;
+                        if (Cache.UserData.ContainsKey(accountName))
+                        {
+                            userData = Cache.UserData[accountName];
+                        }
+                        else
+                        {
+                            userData = new UserData();
+                            Cache.UserData[accountName] = userData;
+                        }
+
+                        userData.AccountName = accountName;
+                        userData.Extension = extension;
+                    }
                 }
             }
             catch (Exception ex)
@@ -88,5 +110,69 @@ namespace LogonEventsWatcherService
                     searchResults.Dispose();
             }
         }
+
+        private void QueryComputerData()
+        {
+            SearchResultCollection searchResults = null;
+            try
+            {
+                DirectoryEntry directoryEntry = new DirectoryEntry(Settings.Default.LdapPath);
+
+                DirectorySearcher directorySearcher = new DirectorySearcher(directoryEntry);
+                directorySearcher.Filter = "(&(objectClass=computer))";
+
+                searchResults = directorySearcher.FindAll();
+
+                String computerName = "";
+                String mac = "";
+                foreach (SearchResult searchResult in searchResults)
+                {
+                    var computerEntry = searchResult.GetDirectoryEntry();
+
+
+                   Logger.Log.Info("Update 1");
+                   var computerNameProp = computerEntry.Properties["sAMAccountName"];
+                    if (computerNameProp != null)
+                        computerName = computerNameProp.Value.ToString();
+
+
+                    Logger.Log.Info("Update 2");
+                    var macProp = computerEntry.Properties["msNPCallingStationID"];
+                    if (macProp != null)
+                        mac = macProp.Value == null ? "" : macProp.Value.ToString();
+
+
+                    Logger.Log.Info("Updater. Found computer: " + computerName + ", mac: " + mac);
+
+                    if (!String.IsNullOrEmpty(computerName))
+                    {
+                        ComputerData computerData = null;
+                        if (Cache.ComputerData.ContainsKey(computerName))
+                        {
+                            computerData = Cache.ComputerData[computerName];
+                        }
+                        else
+                        {
+                            computerData = new ComputerData();
+                            Cache.ComputerData[computerName] = computerData;
+                        }
+
+                        computerData.ComputerName = computerName;
+                        computerData.Mac = mac;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Log.Error(Utils.FormatStackTrace(new StackTrace()) + ": " + ex.Message);
+            }
+            finally
+            {
+                if (searchResults != null)
+                    searchResults.Dispose();
+            }
+        }
+
+      
     }
 }

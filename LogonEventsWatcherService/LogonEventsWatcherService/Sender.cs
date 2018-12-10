@@ -47,7 +47,7 @@ namespace LogonEventsWatcherService
                 EventData eventData = Queue.Dequeue();
                 if (eventData != null)
                 {
-                    String logString = String.Format("Dequeue event code: {0}, username: {1}, domain: {2}, time: {3}",
+                    String logString = String.Format("Dequeue event code: {0}, username: {1}, computer: domain: {2}, time: {3}",
                         eventData.EventCode, eventData.AccountName, eventData.DomainName, eventData.TimeGenerated.ToString());
                     Logger.Log.Info(logString);
                     Logger.Log.Info("Queue count: " + Queue.Count.ToString());
@@ -80,7 +80,8 @@ namespace LogonEventsWatcherService
 
             try
             {
-                ADData adData = Cache.Dict[eventData.AccountName];
+                UserData userData = Cache.UserData[eventData.AccountName];
+                ComputerData computerData = Cache.ComputerData[eventData.ComputerName];
 
                 Int32 timestamp = (Int32)(eventData.TimeGenerated.Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
                 var requestData = new RequestData()
@@ -92,9 +93,9 @@ namespace LogonEventsWatcherService
                     publisher = Constants.Publisher,
                     payload = new Payload()
                     {
-                        mac = adData.Mac,
-                        extension = adData.Extension,
-                        pc = "",
+                        mac = computerData.Mac,
+                        extension = userData.Extension,
+                        pc = eventData.ComputerName,
                         domain = eventData.DomainName,
                         username = eventData.AccountName
                     }
@@ -102,7 +103,7 @@ namespace LogonEventsWatcherService
 
                 string json = JsonConvert.SerializeObject(requestData);
 
-                var request = WebRequest.Create(Constants.TargetUrl);
+                var request = WebRequest.Create(Settings.Default.TargetWebServiceUrl);
                 request.ContentType = "application/json";
                 request.Method = "POST";
 

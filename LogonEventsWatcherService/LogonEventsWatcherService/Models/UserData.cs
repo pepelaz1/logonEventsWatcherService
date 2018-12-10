@@ -6,11 +6,10 @@ using System.Threading.Tasks;
 
 namespace LogonEventsWatcherService.Models
 {
-    public class ADData
+    [Serializable]
+    public class UserData
     {
-        public String SamAccountName { get; set; }
-
-        public String Mac { get; set; }
+        public String AccountName { get; set; }
 
         public String Extension { get; set; }
     }
