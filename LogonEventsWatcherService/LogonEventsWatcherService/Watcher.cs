@@ -13,6 +13,7 @@ namespace LogonEventsWatcherService
     class Watcher
     {
         private ManagementEventWatcher managementEventWatcher;
+        private Dictionary<String, int> previousEvents = new Dictionary<String, int>();
    
         public void Start()
         {
@@ -72,10 +73,32 @@ namespace LogonEventsWatcherService
 
                 if (eventData.AccountName != Constants.SystemRU && eventData.AccountName != Constants.SystemEN)
                 {
-                     String logString = String.Format("Enqueue event code: {0}, username: {1}, computer: {2}, domain: {3}, time: {4}",
-                        eventData.EventCode, eventData.AccountName, eventData.ComputerName, eventData.DomainName, eventData.TimeGenerated.ToString());
-                    Logger.Log.Info(logString);
-                    Queue.Enqueue(eventData);
+                    String id = eventData.AccountName + "|" + eventData.ComputerName;
+
+                    // Check if we sending even with same code twice
+                    bool b = false;
+                    if (!previousEvents.ContainsKey(id))
+                    {
+                        previousEvents.Add(id, eventData.EventCode);
+                        b = true;
+                    }
+                    else
+                    {
+                        if (previousEvents[id] != eventData.EventCode)
+                        {
+                            previousEvents[id] = eventData.EventCode;
+                            b = true;
+                        }
+                    }
+
+                    if (b)
+                    {
+                        String logString = String.Format("Enqueue event code: {0}, username: {1}, computer: {2}, domain: {3}, time: {4}",
+                             eventData.EventCode, eventData.AccountName, eventData.ComputerName, eventData.DomainName, eventData.TimeGenerated.ToString());
+                        Logger.Log.Info(logString);
+
+                        Queue.Enqueue(eventData);
+                    }                   
                 }
             }
             catch(Exception ex)
