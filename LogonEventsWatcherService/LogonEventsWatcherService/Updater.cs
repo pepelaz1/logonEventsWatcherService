@@ -129,14 +129,11 @@ namespace LogonEventsWatcherService
                 {
                     var computerEntry = searchResult.GetDirectoryEntry();
 
-
-                   Logger.Log.Info("Update 1");
-                   var computerNameProp = computerEntry.Properties["sAMAccountName"];
+                    var computerNameProp = computerEntry.Properties["sAMAccountName"];
                     if (computerNameProp != null)
                         computerName = computerNameProp.Value.ToString();
 
 
-                    Logger.Log.Info("Update 2");
                     var macProp = computerEntry.Properties["msNPCallingStationID"];
                     if (macProp != null)
                         mac = macProp.Value == null ? "" : macProp.Value.ToString();
