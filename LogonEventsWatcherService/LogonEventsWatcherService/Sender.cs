@@ -83,13 +83,13 @@ namespace LogonEventsWatcherService
                 UserData userData = Cache.UserData[eventData.AccountName];
                 ComputerData computerData = Cache.ComputerData[eventData.ComputerName];
 
-                Int32 timestamp = (Int32)(eventData.TimeGenerated.Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
+
                 var requestData = new RequestData()
                 {
-                    id = Constants.RequestId,
+                    id = Guid.NewGuid().ToString(),
                     type = eventData.EventCode == Constants.LogonEventCode ?
                         Constants.AdUserLogin : Constants.AdUserLogout,
-                    timestamp = timestamp,
+                    timestamp = eventData.TimeGenerated.ToOADate(),
                     publisher = Constants.Publisher,
                     payload = new Payload()
                     {

@@ -17,7 +17,7 @@ namespace LogonEventsWatcherService.Models
         public String type;
 
         [JsonProperty]
-        public Int32 timestamp;
+        public Double timestamp;
 
         [JsonProperty]
         public String publisher;
