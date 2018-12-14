@@ -3,7 +3,7 @@
   <Profiles />
   <Settings>
     <Setting Name="LdapPath" Type="System.String" Scope="Application">
-      <Value Profile="(Default)" />
+      <Value Profile="(Default)">LDAP://ringplan.test</Value>
     </Setting>
   </Settings>
 </SettingsFile>

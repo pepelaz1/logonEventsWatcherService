@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -47,10 +48,10 @@ namespace LogonEventsWatcherService
                 EventData eventData = Queue.Dequeue();
                 if (eventData != null)
                 {
-                    String logString = String.Format("Dequeue event code: {0}, username: {1}, computer: domain: {2}, time: {3}",
-                        eventData.EventCode, eventData.AccountName, eventData.DomainName, eventData.TimeGenerated.ToString());
+                    String logString = String.Format("Sender. Dequeue event code: {0}, username: {1}, computer: {2}, domain: {3}, time: {4}",
+                        eventData.EventCode, eventData.AccountName,eventData.ComputerName, eventData.DomainName, eventData.TimeGenerated.ToString());
                     Logger.Log.Info(logString);
-                    Logger.Log.Info("Queue count: " + Queue.Count.ToString());
+                    Logger.Log.Info("Sender. Queue count: " + Queue.Count.ToString());
 
                     Send(eventData);
                 }
@@ -64,25 +65,16 @@ namespace LogonEventsWatcherService
 
         private void Send(EventData eventData)
         {
-            //{
-            //    "id": "8400b42a-0715-4f34-8330-19cc754c804b", // uuid
-            //    "type": "ad.user.login", // "type": "ad.user.logout",
-            //    "timestamp": 1543939345.173888, // timestamp
-            //    "publisher": "ad", // name of service
-            //    "payload": {
-            //        "mac": ...., // mac address stored in AD computer object
-            //        "extension": ...., // extension stored in AD user object
-            //        "pc": ...., // pc where event ocurred
-            //        "domain": ...., // AD domain
-            //        "username": ..... // AD username
-            //    }
-            //}
-
             try
             {
+                Logger.Log.Info("Sender. Try to find user in cache: " + eventData.AccountName);
                 UserData userData = Cache.UserData[eventData.AccountName];
-                ComputerData computerData = Cache.ComputerData[eventData.ComputerName];
+                Logger.Log.Info("Sender. User found");
 
+                String computerName = eventData.ComputerName.Split('.')[0];
+                Logger.Log.Info("Sender. Try to find computer in cache: " + computerName);
+                ComputerData computerData = Cache.ComputerData[computerName];
+                Logger.Log.Info("Sender. Computer found");
 
                 var requestData = new RequestData()
                 {
@@ -103,7 +95,7 @@ namespace LogonEventsWatcherService
 
                 string json = JsonConvert.SerializeObject(requestData);
 
-                var request = WebRequest.Create(Settings.Default.TargetWebServiceUrl);
+                var request = WebRequest.Create(ConfigurationManager.AppSettings["TargetWebServiceUrl"]);
                 request.ContentType = "application/json";
                 request.Method = "POST";
 
@@ -114,13 +106,13 @@ namespace LogonEventsWatcherService
                     streamWriter.Close();
                 }
 
-                Logger.Log.Info("Perform http request: ");
+                Logger.Log.Info("Sender. Perform http request with payload: " + json);
 
                 var response = request.GetResponse();
                 using (var streamReader = new StreamReader(response.GetResponseStream()))
                 {
                     var result = streamReader.ReadToEnd();
-                    Logger.Log.Info("Respose: " + result);
+                    Logger.Log.Info("Sender. Respose: " + result);
                 }
             }
             catch(Exception ex)

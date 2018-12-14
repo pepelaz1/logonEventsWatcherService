@@ -25,7 +25,7 @@ namespace TestApp.Properties {
         
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        [global::System.Configuration.DefaultSettingValueAttribute("LDAP://ringplan.test")]
         public string LdapPath {
             get {
                 return ((string)(this["LdapPath"]));

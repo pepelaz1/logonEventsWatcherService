@@ -1,6 +1,7 @@
 ﻿using LogonEventsWatcherService.Models;
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Diagnostics;
 using System.DirectoryServices;
 using System.IO;
@@ -21,12 +22,12 @@ namespace LogonEventsWatcherService
             //Cache.Deserialize();
             QueryLdap();
 
-            timer = new Timer(Settings.Default.LdapQueryInterval * 1000);
+            timer = new Timer(int.Parse(ConfigurationManager.AppSettings["LdapQueryInterval"]) * 1000);
             timer.AutoReset = true;
             timer.Elapsed += new ElapsedEventHandler(timer_elasped);
             timer.Start();
 
-            Logger.Log.Info("Updater started, inverval (sec): " + Settings.Default.LdapQueryInterval.ToString());
+            Logger.Log.Info("Updater started, inverval (sec): " + ConfigurationManager.AppSettings["LdapQueryInterval"]);
         }
 
         public void Stop()
@@ -46,7 +47,7 @@ namespace LogonEventsWatcherService
 
         private void QueryLdap()
         {
-            Logger.Log.Info("Updater perform ldap query");
+            Logger.Log.Info("Updater perform ldap query, path: " + ConfigurationManager.AppSettings["LdapPath"]);
 
             QueryUserData();
 
@@ -58,10 +59,10 @@ namespace LogonEventsWatcherService
             SearchResultCollection searchResults = null;
             try
             {
-                DirectoryEntry directoryEntry = new DirectoryEntry(Settings.Default.LdapPath);
+                DirectoryEntry directoryEntry = new DirectoryEntry(ConfigurationManager.AppSettings["LdapPath"]);
 
                 DirectorySearcher directorySearcher = new DirectorySearcher(directoryEntry);
-                directorySearcher.Filter = "(&(objectClass=user)(objectCategory=user))";
+                directorySearcher.Filter = "(&(objectClass=person)(objectCategory=user))";
 
                 searchResults = directorySearcher.FindAll();
 
@@ -80,23 +81,19 @@ namespace LogonEventsWatcherService
                     if (extensionProp != null)
                         extension = extensionProp.Value == null ? "" : extensionProp.Value.ToString();
 
-                    //Logger.Log.Info("Updater. Found user: " + accountName + ", extension: " + extension);
+                    Logger.Log.Info("Updater. Found user: " + accountName + ", extension: " + extension);
 
                     if (!String.IsNullOrEmpty(accountName))
                     {
-                        UserData userData = null;
-                        if (Cache.UserData.ContainsKey(accountName))
+                        if (!Cache.UserData.ContainsKey(accountName))
                         {
-                            userData = Cache.UserData[accountName];
+                            UserData userData = new UserData();
+                            Cache.UserData.Add(accountName, userData);
+                            Logger.Log.Info("Updater. Add new user data for user: " + accountName);
                         }
-                        else
-                        {
-                            userData = new UserData();
-                            Cache.UserData[accountName] = userData;
-                        }
-
-                        userData.AccountName = accountName;
-                        userData.Extension = extension;
+                
+                        Cache.UserData[accountName].AccountName = accountName;
+                        Cache.UserData[accountName].Extension = extension;
                     }
                 }
             }
@@ -116,8 +113,8 @@ namespace LogonEventsWatcherService
             SearchResultCollection searchResults = null;
             try
             {
-                DirectoryEntry directoryEntry = new DirectoryEntry(Settings.Default.LdapPath);
-
+                DirectoryEntry directoryEntry = new DirectoryEntry(ConfigurationManager.AppSettings["LdapPath"]);
+                
                 DirectorySearcher directorySearcher = new DirectorySearcher(directoryEntry);
                 directorySearcher.Filter = "(&(objectClass=computer)(objectCategory=computer))";
 
@@ -131,7 +128,7 @@ namespace LogonEventsWatcherService
 
                     var computerNameProp = computerEntry.Properties["sAMAccountName"];
                     if (computerNameProp != null)
-                        computerName = computerNameProp.Value.ToString();
+                        computerName = computerNameProp.Value.ToString().Replace("$","");
 
 
                     var macProp = computerEntry.Properties["msNPCallingStationID"];
@@ -139,23 +136,18 @@ namespace LogonEventsWatcherService
                         mac = macProp.Value == null ? "" : macProp.Value.ToString();
 
 
-                    //Logger.Log.Info("Updater. Found computer: " + computerName + ", mac: " + mac);
+                    Logger.Log.Info("Updater. Found computer: " + computerName + ", mac: " + mac);
 
                     if (!String.IsNullOrEmpty(computerName))
                     {
-                        ComputerData computerData = null;
-                        if (Cache.ComputerData.ContainsKey(computerName))
+                         if (!Cache.ComputerData.ContainsKey(computerName))
                         {
-                            computerData = Cache.ComputerData[computerName];
+                            ComputerData computerData = new ComputerData();
+                            Cache.ComputerData.Add(computerName, computerData);
+                            Logger.Log.Info("Updater. Add new computer data for computer: " + computerName);
                         }
-                        else
-                        {
-                            computerData = new ComputerData();
-                            Cache.ComputerData[computerName] = computerData;
-                        }
-
-                        computerData.ComputerName = computerName;
-                        computerData.Mac = mac;
+                        Cache.ComputerData[computerName].ComputerName = computerName;
+                        Cache.ComputerData[computerName].Mac = mac;
                     }
                 }
             }

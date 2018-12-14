@@ -93,7 +93,7 @@ namespace LogonEventsWatcherService
 
                     if (b)
                     {
-                        String logString = String.Format("Enqueue event code: {0}, username: {1}, computer: {2}, domain: {3}, time: {4}",
+                        String logString = String.Format("Watcher. Enqueue event code: {0}, username: {1}, computer: {2}, domain: {3}, time: {4}",
                              eventData.EventCode, eventData.AccountName, eventData.ComputerName, eventData.DomainName, eventData.TimeGenerated.ToString());
                         Logger.Log.Info(logString);
 
