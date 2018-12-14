@@ -61,7 +61,7 @@ namespace LogonEventsWatcherService
                 DirectoryEntry directoryEntry = new DirectoryEntry(Settings.Default.LdapPath);
 
                 DirectorySearcher directorySearcher = new DirectorySearcher(directoryEntry);
-                directorySearcher.Filter = "(&(objectClass=user))";
+                directorySearcher.Filter = "(&(objectClass=user)(objectCategory=user))";
 
                 searchResults = directorySearcher.FindAll();
 
@@ -119,7 +119,7 @@ namespace LogonEventsWatcherService
                 DirectoryEntry directoryEntry = new DirectoryEntry(Settings.Default.LdapPath);
 
                 DirectorySearcher directorySearcher = new DirectorySearcher(directoryEntry);
-                directorySearcher.Filter = "(&(objectClass=computer))";
+                directorySearcher.Filter = "(&(objectClass=computer)(objectCategory=computer))";
 
                 searchResults = directorySearcher.FindAll();
 

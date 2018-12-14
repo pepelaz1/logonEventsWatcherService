@@ -3,4 +3,6 @@ LogonEventsWatcherService/LogonEventsWatcherService/obj
 LogonEventsWatcherService/LogonEventsWatcherService/bin
 LogonEventsWatcherService/LogonEventsWatcherService/packages
 LogonEventsWatcherService/packages/
+bin
+obj
 *.zip
