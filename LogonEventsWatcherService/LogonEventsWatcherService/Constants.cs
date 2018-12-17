@@ -23,6 +23,7 @@ namespace LogonEventsWatcherService
         public const String Subject = "Subject:";
         //public const String SubjectRU = "Субъект:";
 
+        public const String WorkstationName = "Workstation Name:";
         public const String SourceNetworkAddress = "Source Network Address:";
        
         public const String AdUserLogin = "ad.user.login";
