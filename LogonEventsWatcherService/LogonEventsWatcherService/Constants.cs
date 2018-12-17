@@ -14,15 +14,16 @@ namespace LogonEventsWatcherService
         public const int LogonEventCode = 4624;
         public const int LogoffEventCode = 4634;
 
-        public const String NewLogonEN = "New Logon:";
-        public const String NewLogonRU = "Новый вход:";
+        public const String NewLogon = "New Logon:";
+        //public const String NewLogonRU = "Новый вход:";
 
-        public const String SystemEN = "SYSTEM";
-        public const String SystemRU = "СИСТЕМА";
+        public const String System = "SYSTEM";
+        //public const String SystemRU = "СИСТЕМА";
 
-        public const String SubjectEN = "Subject:";
-        public const String SubjectRU = "Субъект:";
+        public const String Subject = "Subject:";
+        //public const String SubjectRU = "Субъект:";
 
+        public const String SourceNetworkAddress = "Source Network Address:";
        
         public const String AdUserLogin = "ad.user.login";
         public const String AdUserLogout = "ad.user.logout";

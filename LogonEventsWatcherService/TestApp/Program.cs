@@ -17,7 +17,7 @@ namespace TestApp
             {
                 try
                 {
-                    string name = Dns.GetHostByAddress(args[0]).HostName;
+                    string name = Dns.GetHostEntry(args[0]).HostName;
                     //string name = Dns.GetHostEntry(args[0]).HostName);
                     Console.WriteLine(name);
                 }

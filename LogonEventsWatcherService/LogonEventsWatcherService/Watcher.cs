@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Management;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -14,12 +15,10 @@ namespace LogonEventsWatcherService
     {
         private ManagementEventWatcher managementEventWatcher;
         private Dictionary<String, int> previousEvents = new Dictionary<String, int>();
-   
+        private Dictionary<String, String> userComputers = new Dictionary<String, String>();
+
         public void Start()
         {
-            //ConnectionOptions connectionOptions = new ConnectionOptions();
-            //connectionOptions.Username = "pepel@testdomain.com";
-           // connectionOptions.Password = "Qwerty123";
             ManagementScope managementScope = new ManagementScope(Constants.ManagementConnectionString);
             managementScope.Connect();
 
@@ -62,16 +61,16 @@ namespace LogonEventsWatcherService
                 if (timeGeneratedProp.Value != null)
                     eventData.TimeGenerated = ManagementDateTimeConverter.ToDateTime(timeGeneratedProp.Value.ToString());
 
-                var computerProp = mbo.Properties["ComputerName"];
-                if (computerProp != null)
-                    eventData.ComputerName = computerProp.Value.ToString();
+               // var computerProp = mbo.Properties["ComputerName"];
+               //if (computerProp != null)
+                //    eventData.ComputerName = computerProp.Value.ToString();
 
                var messageProp = mbo.Properties["Message"];
                 if (messageProp != null)
                     parseMessage(messageProp.Value.ToString(), eventData);
 
 
-                if (eventData.AccountName != Constants.SystemRU && eventData.AccountName != Constants.SystemEN)
+                if (eventData.AccountName != Constants.System)
                 {
                     String id = eventData.AccountName + "|" + eventData.ComputerName;
 
@@ -93,6 +92,9 @@ namespace LogonEventsWatcherService
 
                     if (b)
                     {
+                        if (String.IsNullOrEmpty(eventData.ComputerName))
+                            eventData.ComputerName = userComputers[eventData.AccountName];
+
                         String logString = String.Format("Watcher. Enqueue event code: {0}, username: {1}, computer: {2}, domain: {3}, time: {4}",
                              eventData.EventCode, eventData.AccountName, eventData.ComputerName, eventData.DomainName, eventData.TimeGenerated.ToString());
                         Logger.Log.Info(logString);
@@ -115,19 +117,36 @@ namespace LogonEventsWatcherService
             {
                 for (int i = 0; i < parts.Length; i++)
                 {
-                    if (parts[i] == Constants.NewLogonEN || parts[i] == Constants.NewLogonRU)
+                    if (parts[i] == Constants.NewLogon)
                     {
                         eventData.AccountName = parts[i + 4];
                         eventData.DomainName = parts[i + 6];
-                        break;
                     }
+                    else if (parts[i] == Constants.SourceNetworkAddress)
+                    {
+                        String hostname = Dns.GetHostEntry(parts[i + 1]).HostName;
+                        if (String.IsNullOrEmpty(hostname))
+                        {
+                            eventData.ComputerName = hostname.Split('.')[0];
+                            String logString = String.Format("Watcher. Source network address: {0}, hostname: {1} ", parts[i], eventData.ComputerName);
+                            Logger.Log.Info(logString);
+                        }
+                    }
+                }
+
+                if (!String.IsNullOrEmpty(eventData.AccountName) && !String.IsNullOrEmpty(eventData.ComputerName))
+                {
+                    if (!userComputers.ContainsKey(eventData.AccountName))
+                        userComputers.Add(eventData.AccountName, eventData.ComputerName);
+
+                    userComputers[eventData.AccountName] = eventData.ComputerName;
                 }
             }
             else if (eventData.EventCode == Constants.LogoffEventCode)
             {
                 for (int i = 0; i < parts.Length; i++)
                 {
-                    if (parts[i] == Constants.SubjectEN || parts[i] == Constants.SubjectRU)
+                    if (parts[i] == Constants.Subject)
                     {
                         eventData.AccountName = parts[i + 4];
                         eventData.DomainName = parts[i + 6];
