@@ -81,7 +81,7 @@ namespace LogonEventsWatcherService
                     if (extensionProp != null)
                         extension = extensionProp.Value == null ? "" : extensionProp.Value.ToString();
 
-                    Logger.Log.Info("Updater. Found user: " + accountName + ", extension: " + extension);
+                    //Logger.Log.Info("Updater. Found user: " + accountName + ", extension: " + extension);
 
                     if (!String.IsNullOrEmpty(accountName))
                     {
@@ -136,7 +136,7 @@ namespace LogonEventsWatcherService
                         mac = macProp.Value == null ? "" : macProp.Value.ToString();
 
 
-                    Logger.Log.Info("Updater. Found computer: " + computerName + ", mac: " + mac);
+                    //Logger.Log.Info("Updater. Found computer: " + computerName + ", mac: " + mac);
 
                     if (!String.IsNullOrEmpty(computerName))
                     {

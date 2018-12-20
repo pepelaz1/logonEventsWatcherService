@@ -17,5 +17,7 @@ namespace LogonEventsWatcherService.Models
         public int EventCode { get; set; }
 
         public DateTime TimeGenerated { get; set; }
+
+        public String LogonID { get; set; }
     }
 }

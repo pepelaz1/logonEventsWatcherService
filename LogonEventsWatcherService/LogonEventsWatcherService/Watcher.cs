@@ -16,6 +16,7 @@ namespace LogonEventsWatcherService
         private ManagementEventWatcher managementEventWatcher;
         private Dictionary<String, int> previousEvents = new Dictionary<String, int>();
         private Dictionary<String, String> userComputers = new Dictionary<String, String>();
+        private Dictionary<String, String> userLogonIDs = new Dictionary<String, String>();
 
         public void Start()
         {
@@ -61,10 +62,6 @@ namespace LogonEventsWatcherService
                 if (timeGeneratedProp.Value != null)
                     eventData.TimeGenerated = ManagementDateTimeConverter.ToDateTime(timeGeneratedProp.Value.ToString());
 
-               // var computerProp = mbo.Properties["ComputerName"];
-               //if (computerProp != null)
-                //    eventData.ComputerName = computerProp.Value.ToString();
-
                 var messageProp = mbo.Properties["Message"];
                 if (messageProp != null)
                     parseMessage(messageProp.Value.ToString(), eventData);
@@ -72,29 +69,29 @@ namespace LogonEventsWatcherService
 
                 if (!String.IsNullOrEmpty(eventData.AccountName) && eventData.AccountName != Constants.System)
                 {
-                    String id = eventData.AccountName + "|" + eventData.ComputerName;
+                    if (String.IsNullOrEmpty(eventData.ComputerName) && userComputers.ContainsKey(eventData.AccountName))
+                        eventData.ComputerName = userComputers[eventData.AccountName];
 
-                    // Check if we sending even with same code twice
-                    bool b = false;
-                    if (!previousEvents.ContainsKey(id))
-                    {
-                        previousEvents.Add(id, eventData.EventCode);
-                        b = true;
-                    }
-                    else
-                    {
-                        if (previousEvents[id] != eventData.EventCode)
-                        {
-                            previousEvents[id] = eventData.EventCode;
-                            b = true;
-                        }
-                    }
+                    //String id = eventData.AccountName + "|" + eventData.ComputerName;
 
-                    if (b)
-                    {
-                        if (String.IsNullOrEmpty(eventData.ComputerName) && userComputers.ContainsKey(eventData.AccountName))
-                            eventData.ComputerName = userComputers[eventData.AccountName];
+                    //// Check if we sending even with same code twice
+                    //bool b = false;
+                    //if (!previousEvents.ContainsKey(id))
+                    //{
+                    //    previousEvents.Add(id, eventData.EventCode);
+                    //    b = true;
+                    //}
+                    //else
+                    //{
+                    //    if (previousEvents[id] != eventData.EventCode)
+                    //    {
+                    //        previousEvents[id] = eventData.EventCode;
+                    //        b = true;
+                    //    }
+                    //}
 
+                    //if (b)
+                    //{
                         if (!String.IsNullOrEmpty(eventData.ComputerName))
                         {
                             String logString = String.Format("Watcher. Enqueue event code: {0}, username: {1}, computer: {2}, domain: {3}, time: {4}",
@@ -103,7 +100,7 @@ namespace LogonEventsWatcherService
 
                             Queue.Enqueue(eventData);
                         }
-                    }                   
+  //                  }                   
                 }
             }
             catch(Exception ex)
@@ -118,6 +115,7 @@ namespace LogonEventsWatcherService
 
             if (eventData.EventCode == Constants.LogonEventCode)
             {
+                Logger.Log.Info("Watcher. Analyze event " + Constants.LogonEventCode);
                 String sourceNetworkAddress = "";
                 String workstationName = "";
                 for (int i = 0; i < parts.Length; i++)
@@ -127,10 +125,22 @@ namespace LogonEventsWatcherService
                         if (parts[i + 2] == Constants.System)
                             return;
 
-                        eventData.AccountName = parts[i + 4];
+                        String accountName = parts[i + 4];
+                        if (userLogonIDs.ContainsKey(accountName))
+                            return;
+
+                        if (accountName[accountName.Length - 1] == '$') // this is computer account
+                            return;
+
+                        eventData.AccountName = accountName;
                         eventData.DomainName = parts[i + 6];
-                        Logger.Log.Info("Watcher. Parsed New logon: account:  " + eventData.AccountName + ", domain: " + eventData.DomainName);
-                    }
+                        eventData.LogonID = parts[i + 8];
+
+                        Logger.Log.Info("Watcher. Parsed logon: account:  " + eventData.AccountName 
+                            + ", domain: " + eventData.DomainName +", logon ID: " + eventData.LogonID);
+                       
+                        userLogonIDs.Add(eventData.AccountName, eventData.LogonID);
+                  }
                     else if (parts[i] == Constants.WorkstationName)
                     {
                         Logger.Log.Info("Watcher. Parsed Workstation Name: " + parts[i + 1]);
@@ -145,14 +155,14 @@ namespace LogonEventsWatcherService
 
                 if (!String.IsNullOrEmpty(workstationName) && workstationName != "-")
                 {
-                    eventData.ComputerName = workstationName;
+                    eventData.ComputerName = workstationName.ToUpper();
                 }
                 else if (!String.IsNullOrEmpty(sourceNetworkAddress) && sourceNetworkAddress != "-")
                 {
                     String hostname = Dns.GetHostEntry(sourceNetworkAddress).HostName;
                     if (!String.IsNullOrEmpty(hostname))
                     {
-                        eventData.ComputerName = hostname.Split('.')[0];
+                        eventData.ComputerName = hostname.Split('.')[0].ToUpper();
                         String logString = String.Format("Watcher. Name from source network address: {0}, hostname: {1} ", sourceNetworkAddress, eventData.ComputerName);
                         Logger.Log.Info(logString);
                     }
@@ -160,20 +170,36 @@ namespace LogonEventsWatcherService
 
                 if (!String.IsNullOrEmpty(eventData.AccountName) && !String.IsNullOrEmpty(eventData.ComputerName))
                 {
-                    if (!userComputers.ContainsKey(eventData.AccountName))
+                     if (!userComputers.ContainsKey(eventData.AccountName))
                         userComputers.Add(eventData.AccountName, eventData.ComputerName);
 
                     userComputers[eventData.AccountName] = eventData.ComputerName;
+                    Logger.Log.Info("Watcher. Add computer " + eventData.ComputerName + " for user + " + eventData.AccountName);
                 }
             }
             else if (eventData.EventCode == Constants.LogoffEventCode)
             {
+                Logger.Log.Info("Watcher. Analyze event " + Constants.LogoffEventCode);
                 for (int i = 0; i < parts.Length; i++)
                 {
                     if (parts[i] == Constants.Subject)
                     {
-                        eventData.AccountName = parts[i + 4];
+                        String accountName = parts[i + 4];
+                        if (!userLogonIDs.ContainsKey(accountName))
+                            return;
+
+                        String logonID = parts[i + 8];
+                        if (logonID != userLogonIDs[accountName])
+                            return;
+
+                        eventData.AccountName = accountName;
                         eventData.DomainName = parts[i + 6];
+                        eventData.LogonID = logonID;
+
+                        Logger.Log.Info("Watcher. Parsed logoff: account:  " + eventData.AccountName
+                            + ", domain: " + eventData.DomainName + ", logon ID: " + eventData.LogonID);
+
+                        userLogonIDs.Remove(eventData.AccountName);
                         break;
                     }
                 }
